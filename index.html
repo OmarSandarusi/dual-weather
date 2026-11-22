@@ -13,11 +13,11 @@
   :root {
     --bg1: #16263d; --bg2: #2d4a73;
     --text: #f4f7fb; --muted: rgba(244,247,251,.68);
-    --card: rgba(255,255,255,.12); --card-strong: rgba(255,255,255,.2);
-    --line: rgba(255,255,255,.16);
+    --card: rgba(255,255,255,.14); --card-strong: rgba(255,255,255,.22);
+    --line: rgba(255,255,255,.24);
     --c: #ffffff;            /* Celsius colour */
     --f: #ffc27a;            /* Fahrenheit colour */
-    --radius: 24px;
+    --radius: 32px;
     color-scheme: dark;
   }
   body[data-sky="clear-day"]   { --bg1:#2f6fd6; --bg2:#7bb6f2; }
@@ -69,7 +69,8 @@
   .d .f { color: var(--f); }
   .d .s { opacity:.4; margin: 0 .25em; }
 
-  .card { background: var(--card); border-radius: var(--radius); padding: 14px 16px; margin-top: 14px; backdrop-filter: blur(6px); }
+  .card, .tile { border:1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+  .card { background: var(--card); border-radius: var(--radius); padding: 18px 18px 14px; margin-top: 16px; backdrop-filter: blur(6px); }
   .card h2 { margin:0 0 10px; font-size:.78rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
 
   /* hourly */
@@ -86,23 +87,23 @@
   #hourlyCard { scroll-margin-top: 8px; }
 
   /* daily */
-  .day { display:grid; grid-template-columns: 56px 34px 1fr; align-items:center; gap:6px; padding:10px 0; border-top:1px solid var(--line); }
-  .day:first-of-type { border-top:0; }
-  .day { cursor:pointer; }
-  .day.sel { background:var(--card-strong); border-radius:16px; margin:0 -8px; padding:10px 8px; border-top-color:transparent; }
-  .day.sel + .day { border-top-color:transparent; }
+  .days { display:flex; gap:10px; overflow-x:auto; margin:0 -8px; padding:2px 8px 10px; scroll-snap-type:x proximity; }
+  .day { flex:0 0 92px; scroll-snap-align:start; display:flex; flex-direction:column; align-items:center; text-align:center;
+         padding:14px 6px 14px; border-radius:30px; background:rgba(255,255,255,.07); border:1px solid var(--line);
+         cursor:pointer; font-variant-numeric: tabular-nums; transition: background .15s, border-color .15s; }
+  .day.sel { background:rgba(255,255,255,.28); border-color:rgba(255,255,255,.7); box-shadow:0 6px 16px rgba(0,0,0,.2); }
   .day:focus-visible { outline:2px solid #fff; outline-offset:2px; }
-  .day .name { font-weight:500; }
-  .day .pp { font-size:.72rem; color:#9fd0ff; min-height:1em; }
-  .day .ic { font-size:1.5rem; text-align:center; }
-  .day .temps { display:flex; flex-direction:column; gap:2px; text-align:right; font-variant-numeric: tabular-nums; }
-  .day .temps small { color: var(--muted); font-size:.72rem; margin-right:4px; }
-  .legend { display:grid; grid-template-columns: 96px 1fr 1fr; gap:6px; font-size:.72rem; color:var(--muted); padding-bottom:4px; text-align:right; }
-  .legend span:nth-child(2) { color:var(--c); } .legend span:nth-child(3) { color:var(--f); }
+  .day .name { font-weight:600; font-size:.95rem; }
+  .day .ic { font-size:1.9rem; margin:8px 0 2px; }
+  .day .pp { font-size:.72rem; color:#9fd0ff; height:1.5em; line-height:1.5em; margin-bottom:4px; }
+  .day .tc { font-size:1.05rem; font-weight:600; color:var(--c); }
+  .day .tf { font-size:.95rem; color:var(--f); }
+  .day .rule { width:56%; height:1px; background:var(--line); margin:9px 0 8px; }
+  .day .lo { opacity:.72; }
 
   /* details */
   .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:14px; }
-  .tile { background:var(--card); border-radius:var(--radius); padding:14px 16px; }
+  .tile { background:var(--card); border-radius:28px; padding:16px 18px; }
   .tile.wide { grid-column: span 2; }
   .tile .v .s { opacity:.4; }
   .tile h3 { margin:0 0 6px; font-size:.75rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
@@ -240,6 +241,7 @@ const tile = (title, body, cls = '', style = '') => `<div class="tile ${cls}"><h
 
 function render(l, data) {
   shown = { l, data };
+  const prevDayScroll = document.querySelector('.days')?.scrollLeft || 0;
   const c = data.current, h = data.hourly, d = data.daily;
   if (selDay >= d.time.length) selDay = 0;
   const sel = selDay, today = sel === 0;
@@ -281,13 +283,15 @@ function render(l, data) {
   const days = d.time.map((t, i) => {
     const [, em] = describe(d.weather_code[i], 1);
     const pp = d.precipitation_probability_max[i];
-    return `<div class="day ${i === sel ? 'sel' : ''}" data-day="${i}" role="button" tabindex="0" aria-pressed="${i === sel}">
-      <div><div class="name">${dayName(t, i)}</div><div class="pp">${pp >= 10 ? '💧' + pp + '%' : ''}</div></div>
+    const hi = d.temperature_2m_max[i], lo = d.temperature_2m_min[i];
+    return `<div class="day ${i === sel ? 'sel' : ''}" data-day="${i}" role="button" tabindex="0" aria-pressed="${i === sel}"
+        aria-label="${dayName(t, i)}, high ${r(hi)}°C ${r(toF(hi))}°F, low ${r(lo)}°C ${r(toF(lo))}°F">
+      <div class="name">${dayName(t, i)}</div>
       <div class="ic">${em}</div>
-      <div class="temps">
-        <div><small>H</small>${dual(d.temperature_2m_max[i])}</div>
-        <div><small>L</small>${dual(d.temperature_2m_min[i])}</div>
-      </div></div>`;
+      <div class="pp">${pp >= 10 ? '💧' + pp + '%' : ''}</div>
+      <div class="tc">${r(hi)}°C</div><div class="tf">${r(toF(hi))}°F</div>
+      <div class="rule"></div>
+      <div class="lo"><div class="tc">${r(lo)}°C</div><div class="tf">${r(toF(lo))}°F</div></div></div>`;
   }).join('');
 
   // ----- detail tiles -----
@@ -335,9 +339,11 @@ function render(l, data) {
 
     <section class="card" id="hourlyCard"><h2>Hourly${today ? '' : ' · ' + dayName(d.time[sel], sel)}</h2><div class="hours">${hours}</div></section>
 
-    <section class="card"><h2>10-day forecast</h2>${days}</section>
+    <section class="card"><h2>10-day forecast</h2><div class="days">${days}</div></section>
 
     <div class="grid">${tiles.join('')}</div>`;
+  const dayStrip = $('.days');                     // keep the day strip where the user had scrolled it
+  if (dayStrip) dayStrip.scrollLeft = prevDayScroll;
 }
 
 // tap (or Enter/Space) on a day to make it the selected day
