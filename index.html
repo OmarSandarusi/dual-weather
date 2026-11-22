@@ -12,12 +12,12 @@
 <style>
   :root {
     --bg1: #16263d; --bg2: #2d4a73;
-    --text: #f7f9fc; --muted: rgba(247,249,252,.82);
-    --card: rgba(10,20,38,.46); --card-strong: rgba(255,255,255,.24);
-    --line: rgba(255,255,255,.2);
+    --text: #f4f6fa; --muted: rgba(244,246,250,.74);
+    --card: #131417; --card-2: #1f2126; --card-strong: rgba(255,255,255,.24);
+    --line: rgba(255,255,255,.16);
     --c: #ffffff;            /* Celsius colour */
     --f: #ffc27a;            /* Fahrenheit colour */
-    --radius: 26px;
+    --radius: 28px;
     color-scheme: dark;
   }
   body[data-sky="clear-day"]   { --bg1:#1f5fc4; --bg2:#4f93de; }
@@ -28,41 +28,45 @@
   body[data-sky="snow"]        { --bg1:#3f5879; --bg2:#7f98ba; }
   body[data-sky="storm"]       { --bg1:#1c2033; --bg2:#473f66; }
 
-  html { font-size: 14px; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
   body {
     min-height: 100vh; min-height: 100dvh;
     font-family: "Google Sans", "Product Sans", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
     color: var(--text);
     background: linear-gradient(170deg, var(--bg1), var(--bg2)) fixed;
     transition: background .6s;
     padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   }
   button { font: inherit; color: inherit; cursor: pointer; }
-  main { max-width: 640px; margin: 0 auto; padding: 4px 14px 32px; }
+  main { max-width: 640px; margin: 0 auto; padding: 0 16px 32px; }
 
-  /* top bar */
-  .bar { display:flex; align-items:center; gap:8px; padding: 6px 0 2px; }
-  .bar h1 { flex:1; margin:0; font-size:1.1rem; font-weight:500; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .icon-btn { width:40px; height:40px; border-radius:50%; border:0; background:var(--card); display:grid; place-items:center; font-size:1.2rem; }
-  .icon-btn:active { background: var(--card-strong); }
+  /* top bar: left-aligned title with "Updated" line, like Pixel Weather */
+  .bar { display:flex; align-items:center; gap:8px; padding: 14px 0 4px; }
+  .ttl { flex:1; min-width:0; }
+  .ttl h1 { margin:0; font-size:22px; font-weight:400; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .upd { font-size:12px; color:var(--muted); margin-top:3px; min-height:1.2em; }
+  .icon-btn { width:40px; height:40px; border-radius:50%; border:0; background:rgba(0,0,0,.32); display:grid; place-items:center; font-size:17px; flex:none; }
+  .icon-btn:active { background: rgba(0,0,0,.5); }
   .icon-btn.spin { animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* hero */
-  .hero { text-align:center; padding: 8px 0 4px; }
-  .hero .emoji { font-size: 3.4rem; line-height:1; }
-  .hero .selday { font-size:.95rem; color:var(--muted); margin-top:8px; }
-  .hero .cond { font-size:1.1rem; margin-top:4px; color: var(--muted); }
-  .big { display:flex; justify-content:center; align-items:baseline; gap: 14px; margin-top: 6px; }
+  .hero { text-align:center; padding: 26px 0 20px; }
+  .hero .cond-row { display:flex; justify-content:center; align-items:center; gap:8px; font-size:20px; }
+  .hero .cond-row .emoji { font-size:26px; line-height:1; }
+  .hero .selday { font-size:13px; color:var(--muted); margin-bottom:8px; }
+  .big { display:flex; justify-content:center; align-items:baseline; gap: 10px; margin-top: 8px; }
   .big .t { display:flex; align-items:flex-start; line-height:.95; }
-  .big .t b { font-size: 4.6rem; font-weight: 300; letter-spacing:-2px; }
-  .big .t i { font-style:normal; font-size:1.5rem; margin:6px 0 0 3px; opacity:.95; }
+  .big .t b { font-size: clamp(60px, 21vw, 88px); font-weight: 400; letter-spacing:-3px; }
+  .big .t i { font-style:normal; font-size:clamp(18px, 6vw, 26px); margin:.35em 0 0 2px; }
   .big .t.c { color: var(--c); }
   .big .t.f { color: var(--f); }
-  .big .sep { font-size: 2.4rem; font-weight:200; opacity:.45; align-self:center; }
-  .hilo { margin-top: 6px; display:flex; flex-direction:column; gap:2px; color: var(--muted); font-size:1rem; }
+  .big .sep { font-size: 38px; font-weight:200; opacity:.45; align-self:center; }
+  .feels { margin-top: 14px; font-size:16px; }
+  .hilo { margin-top: 6px; font-size:16px; }
+  .hilo .dot { opacity:.5; margin:0 .3em; }
 
   /* generic dual readout */
   .d { white-space: nowrap; }
@@ -70,51 +74,54 @@
   .d .f { color: var(--f); }
   .d .s { opacity:.4; margin: 0 .25em; }
 
-  .card, .tile { border:1px solid var(--line); box-shadow: 0 4px 14px rgba(0,0,0,.18); }
-  .card { background: var(--card); border-radius: var(--radius); padding: 14px 14px 10px; margin-top: 12px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  .card h2 { margin:0 0 6px; font-size:.78rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  /* panels: solid, dark, no outline */
+  .card { background: var(--card); border-radius: var(--radius); padding: 16px 16px 14px; margin-top: 16px; }
+  .card h2 { display:flex; align-items:center; gap:10px; margin:0 0 14px; font-size:16px; font-weight:500; color:var(--text); }
+  .card h2 svg { flex:none; opacity:.95; }
 
-  /* hourly */
-  .hours { display:flex; gap:2px; overflow-x:auto; margin: 0 -6px; padding: 0 6px 4px; scroll-snap-type:x proximity; }
-  .hour { flex: 0 0 58px; text-align:center; scroll-snap-align:start; padding: 4px 0; }
-  .hour .time { font-size:.82rem; color:var(--muted); }
-  .hour .ic { font-size:1.6rem; margin:4px 0 2px; }
-  .hour .tc { font-size:1.05rem; font-weight:600; color:var(--c); }
-  .hour .tf { font-size:.95rem; color:var(--f); }
-  .hour .pp { font-size:.75rem; color:#9fd0ff; margin-top:4px; min-height:1em; }
-  .hour .pp.lo { opacity:.5; }
-  .hour .amt { display:flex; flex-direction:column; font-size:.72rem; min-height:2.3em; margin-top:2px; }
+  /* hourly: temp, icon, precip, time */
+  .hours { display:flex; gap:0; overflow-x:auto; margin: 0 -6px; padding: 0 6px 4px; scroll-snap-type:x proximity; scrollbar-width:none; }
+  .hours::-webkit-scrollbar, .days::-webkit-scrollbar { display:none; }
+  .hour { flex: 0 0 52px; text-align:center; scroll-snap-align:start; }
+  .hour .tc { font-size:14px; font-weight:600; color:var(--c); }
+  .hour .tf { font-size:13px; color:var(--f); }
+  .hour .ic { font-size:24px; margin:8px 0 6px; line-height:1.15; }
+  .hour .pp { font-size:12px; color:#9fd0ff; min-height:1.2em; }
+  .hour .pp.lo { opacity:.55; }
+  .hour .amt { display:flex; flex-direction:column; font-size:11px; margin-top:6px; }
+  .hour .amt:empty { display:none; }
   .hour .amt .c { color:var(--c); } .hour .amt .f { color:var(--f); }
+  .hour .time { font-size:12px; color:var(--muted); margin-top:8px; white-space:nowrap; }
   #hourlyCard { scroll-margin-top: 8px; }
 
-  /* daily */
-  .days { display:flex; gap:8px; overflow-x:auto; margin:0 -6px; padding:2px 6px 8px; scroll-snap-type:x proximity; }
-  .day { flex:0 0 74px; scroll-snap-align:start; display:flex; flex-direction:column; align-items:center; text-align:center;
-         padding:10px 4px 10px; border-radius:24px; background:rgba(255,255,255,.08); border:1px solid var(--line);
+  /* daily: slim selectable pills, highs/lows on top */
+  .days { display:flex; gap:5px; overflow-x:auto; margin:0 -6px; padding:2px 6px 6px; scroll-snap-type:x proximity; scrollbar-width:none; }
+  .day { flex:0 0 58px; scroll-snap-align:start; display:flex; flex-direction:column; align-items:center; text-align:center;
+         padding:14px 2px 12px; border-radius:29px; background:var(--card-2); border:1px solid var(--line);
          cursor:pointer; font-variant-numeric: tabular-nums; transition: background .15s, border-color .15s; }
-  .day.sel { background:rgba(255,255,255,.3); border-color:rgba(255,255,255,.75); box-shadow:0 4px 12px rgba(0,0,0,.25); }
+  .day.sel { background:#4b5568; border-color:rgba(255,255,255,.8); }
   .day:focus-visible { outline:2px solid #fff; outline-offset:2px; }
-  .day .name { font-weight:600; font-size:.95rem; }
-  .day .ic { font-size:1.7rem; margin:6px 0 0; }
-  .day .pp { font-size:.72rem; color:#9fd0ff; height:1.5em; line-height:1.5em; margin-bottom:4px; }
-  .day .tc { font-size:1.05rem; font-weight:600; color:var(--c); }
-  .day .tf { font-size:.95rem; color:var(--f); }
-  .day .rule { width:56%; height:1px; background:var(--line); margin:7px 0 6px; }
+  .day .tc { font-size:14px; font-weight:600; color:var(--c); }
+  .day .tf { font-size:13px; color:var(--f); }
+  .day .rule { width:50%; height:1px; background:var(--line); margin:7px 0; }
   .day .lo { opacity:.72; }
+  .day .ic { font-size:24px; margin:12px 0 2px; line-height:1.15; }
+  .day .pp { font-size:11px; color:#9fd0ff; height:1.5em; line-height:1.5em; }
+  .day .name { font-weight:500; font-size:12.5px; margin-top:4px; }
 
   /* details */
-  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:12px; }
-  .tile { background:var(--card); border-radius:22px; padding:12px 14px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:16px; }
+  .tile { background:var(--card); border-radius:24px; padding:14px 16px; }
   .tile.wide { grid-column: span 2; }
   .tile .v .s { opacity:.4; }
-  .tile h3 { margin:0 0 4px; font-size:.75rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
-  .tile .v { font-size:1.15rem; line-height:1.3; }
+  .tile h3 { margin:0 0 6px; font-size:14px; font-weight:500; color:var(--muted); }
+  .tile .v { font-size:18px; line-height:1.3; }
   .tile .v div { display:flex; align-items:baseline; gap:6px; }
   .tile .v .c { color:var(--c); } .tile .v .f { color:var(--f); }
-  .tile .v .u { font-size:.8rem; opacity:.7; }
+  .tile .v .u { font-size:12px; opacity:.7; }
 
-  .foot { text-align:center; color:var(--muted); font-size:.75rem; margin-top:22px; }
-  .banner { background:rgba(255,200,100,.18); border:1px solid rgba(255,200,100,.4); border-radius:14px; padding:8px 12px; margin-top:12px; font-size:.85rem; display:none; }
+  .foot { text-align:center; color:var(--muted); font-size:11px; margin-top:22px; }
+  .banner { background:rgba(255,200,100,.18); border:1px solid rgba(255,200,100,.4); border-radius:14px; padding:8px 12px; margin-top:12px; font-size:13px; display:none; }
   .banner.on { display:block; }
 
   /* empty / welcome */
@@ -145,9 +152,9 @@
 <body data-sky="clear-day">
 <main>
   <div class="bar">
-    <button class="icon-btn" id="openLoc" aria-label="Locations">📍</button>
-    <h1 id="place">Dual Weather</h1>
+    <div class="ttl"><h1 id="place">Dual Weather</h1><div class="upd" id="updated"></div></div>
     <button class="icon-btn" id="refresh" aria-label="Refresh">⟳</button>
+    <button class="icon-btn" id="openLoc" aria-label="Locations">📍</button>
   </div>
   <div class="banner" id="banner"></div>
   <div id="view"></div>
@@ -258,47 +265,50 @@ function render(l, data) {
     h.time.forEach((t, i) => { if (t.startsWith(d.time[sel])) idxs.push(i); });
   }
 
-  // ----- hero (big panel) -----
+  // ----- hero -----
   const [label, emoji, sky] = today ? describe(c.weather_code, c.is_day) : describe(d.weather_code[sel], 1);
   document.body.dataset.sky = sky;
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(document.body).getPropertyValue('--bg1').trim();
   const bigC = today ? c.temperature_2m : d.temperature_2m_max[sel];
   const y = +d.time[sel].slice(0, 4), mo = +d.time[sel].slice(5, 7) - 1, dd = +d.time[sel].slice(8, 10);
   const dayTitle = new Date(y, mo, dd).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const hi = d.temperature_2m_max[sel], lo = d.temperature_2m_min[sel];
 
-  // ----- hourly -----
+  // ----- hourly: temp, icon, precip, time -----
+  let anyWet = false;
   const hours = idxs.map((i, n) => {
     const [, em] = describe(h.weather_code[i], h.is_day[i]);
     const pp = h.precipitation_probability[i];
     const mm = h.precipitation[i] || 0;
+    if (mm >= 0.05) anyWet = true;
     return `<div class="hour">
-      <div class="time">${today && n === 0 ? 'Now' : hourLabel(h.time[i])}</div>
-      <div class="ic">${em}</div>
       <div class="tc">${r(h.temperature_2m[i])}°C</div>
       <div class="tf">${r(toF(h.temperature_2m[i]))}°F</div>
-      <div class="pp ${pp >= 10 ? '' : 'lo'}">${pp == null ? '' : '💧' + pp + '%'}</div>
+      <div class="ic">${em}</div>
+      <div class="pp ${pp >= 10 ? '' : 'lo'}">${pp == null ? '' : pp + '%'}</div>
+      <div class="time">${today && n === 0 ? 'Now' : hourLabel(h.time[i])}</div>
       <div class="amt">${mm >= 0.05 ? `<span class="c">${mm.toFixed(1)}mm</span><span class="f">${mm2in(mm)}in</span>` : ''}</div></div>`;
   }).join('');
 
-  // ----- 10-day list -----
+  // ----- 10-day pills: high, low, icon, precip, day -----
   const days = d.time.map((t, i) => {
     const [, em] = describe(d.weather_code[i], 1);
     const pp = d.precipitation_probability_max[i];
-    const hi = d.temperature_2m_max[i], lo = d.temperature_2m_min[i];
+    const h2 = d.temperature_2m_max[i], l2 = d.temperature_2m_min[i];
     return `<div class="day ${i === sel ? 'sel' : ''}" data-day="${i}" role="button" tabindex="0" aria-pressed="${i === sel}"
-        aria-label="${dayName(t, i)}, high ${r(hi)}°C ${r(toF(hi))}°F, low ${r(lo)}°C ${r(toF(lo))}°F">
-      <div class="name">${dayName(t, i)}</div>
-      <div class="ic">${em}</div>
-      <div class="pp">${pp >= 10 ? '💧' + pp + '%' : ''}</div>
-      <div class="tc">${r(hi)}°C</div><div class="tf">${r(toF(hi))}°F</div>
+        aria-label="${dayName(t, i)}, high ${r(h2)}°C ${r(toF(h2))}°F, low ${r(l2)}°C ${r(toF(l2))}°F">
+      <div class="tc">${r(h2)}°C</div><div class="tf">${r(toF(h2))}°F</div>
       <div class="rule"></div>
-      <div class="lo"><div class="tc">${r(lo)}°C</div><div class="tf">${r(toF(lo))}°F</div></div></div>`;
+      <div class="lo"><div class="tc">${r(l2)}°C</div><div class="tf">${r(toF(l2))}°F</div></div>
+      <div class="ic">${em}</div>
+      <div class="pp">${pp >= 10 ? pp + '%' : ''}</div>
+      <div class="name">${dayName(t, i)}</div></div>`;
   }).join('');
 
   // ----- detail tiles -----
   const chance = d.precipitation_probability_max[sel];
   const total = d.precipitation_sum[sel] || 0;
-  const sun = tile('Sun', `🌅 ${clock(d.sunrise[sel])}<br>🌇 ${clock(d.sunset[sel])}`, '', 'font-size:1rem');
+  const sun = tile('Sun', `🌅 ${clock(d.sunrise[sel])}<br>🌇 ${clock(d.sunset[sel])}`, '', 'font-size:16px');
   const precip = tile(today ? 'Precipitation today' : 'Precipitation',
     `<div>${chance == null ? '—' : '💧 ' + chance + '% chance'}</div>
      <div><span class="c">${total.toFixed(1)}</span><span class="u">mm</span><span class="s">/</span><span class="f">${mm2in(total)}</span><span class="u">in</span></div>`, 'wide');
@@ -312,35 +322,34 @@ function render(l, data) {
       tile('Humidity', r(c.relative_humidity_2m) + '%'),
       sun, precip];
   } else {
-    const dayIx = idxs;
     tiles = [
-      tile('Feels like', `<div>H ${dual(d.apparent_temperature_max[sel])}</div><div>L ${dual(d.apparent_temperature_min[sel])}</div>`, '', 'font-size:1rem'),
-      tile('Dew point (avg)', dualStack(avg(dayIx.map(i => h.dew_point_2m[i])))),
+      tile('Feels like', `<div>H ${dual(d.apparent_temperature_max[sel])}</div><div>L ${dual(d.apparent_temperature_min[sel])}</div>`, '', 'font-size:15px'),
+      tile('Dew point (avg)', dualStack(avg(idxs.map(i => h.dew_point_2m[i])))),
       tile('Wind (max)', speed(d.wind_speed_10m_max[sel])),
       tile('Gusts (max)', speed(d.wind_gusts_10m_max[sel])),
-      tile('Humidity (avg)', r(avg(dayIx.map(i => h.relative_humidity_2m[i]))) + '%'),
+      tile('Humidity (avg)', r(avg(idxs.map(i => h.relative_humidity_2m[i]))) + '%'),
       sun, precip];
   }
 
+  const clockSvg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm.5 5v5.25l4.5 2.67-.75 1.23L11 13V7h1.5z"/></svg>';
+  const calSvg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/></svg>';
+
   $('#view').innerHTML = `
     <section class="hero">
-      <div class="emoji">${emoji}</div>
       ${today ? '' : `<div class="selday">${esc(dayTitle)} · High</div>`}
+      <div class="cond-row"><span class="emoji">${emoji}</span><span>${esc(label)}</span></div>
       <div class="big">
         <div class="t c"><b>${r(bigC)}</b><i>°C</i></div>
         <div class="sep">/</div>
         <div class="t f"><b>${r(toF(bigC))}</b><i>°F</i></div>
       </div>
-      <div class="cond">${esc(label)}</div>
-      <div class="hilo">
-        ${today ? `<div>High ${dual(d.temperature_2m_max[0])}</div>` : ''}
-        <div>Low ${dual(d.temperature_2m_min[sel])}</div>
-      </div>
+      ${today ? `<div class="feels">Feels like ${dual(c.apparent_temperature)}</div>` : ''}
+      <div class="hilo">${today ? `High ${dual(hi)}<span class="dot">·</span>Low ${dual(lo)}` : `Low ${dual(lo)}`}</div>
     </section>
 
-    <section class="card" id="hourlyCard"><h2>Hourly${today ? '' : ' · ' + dayName(d.time[sel], sel)}</h2><div class="hours">${hours}</div></section>
+    <section class="card" id="hourlyCard"><h2>${clockSvg}<span>Hourly forecast${today ? '' : ' · ' + dayName(d.time[sel], sel)}</span></h2><div class="hours ${anyWet ? 'hasamt' : ''}">${hours}</div></section>
 
-    <section class="card"><h2>10-day forecast</h2><div class="days">${days}</div></section>
+    <section class="card"><h2>${calSvg}<span>10-day forecast</span></h2><div class="days">${days}</div></section>
 
     <div class="grid">${tiles.join('')}</div>`;
   const dayStrip = $('.days');                     // keep the day strip where the user had scrolled it
@@ -362,7 +371,7 @@ $('#view').addEventListener('keydown', e => {
 });
 
 function showWelcome() {
-  $('#place').textContent = 'Dual Weather';
+  $('#place').textContent = 'Dual Weather'; setUpdated(0);
   document.body.dataset.sky = 'clear-day';
   $('#view').innerHTML = `<div class="welcome">
     <div class="emoji">🌡️</div>
@@ -372,6 +381,7 @@ function showWelcome() {
     <button class="btn" onclick="useGeo()">Use my location</button></div>`;
 }
 
+const setUpdated = ts => { const el = $('#updated'); if (el) el.textContent = ts ? 'Updated ' + new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''; };
 function banner(msg) { const b = $('#banner'); b.textContent = msg || ''; b.classList.toggle('on', !!msg); }
 const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
 
@@ -381,12 +391,12 @@ async function show(forceNetwork = true) {
   $('#place').textContent = l.name;
   if (key(l) !== shownKey) { selDay = 0; shownKey = key(l); }
   const c = cached(l);
-  if (c) render(l, c.data);
+  if (c) { render(l, c.data); setUpdated(c.t); }
   if (!forceNetwork && c && Date.now() - c.t < 10 * 60 * 1000) { banner(''); return; }
   $('#refresh').classList.add('spin');
   try {
     const data = await fetchWeather(l);
-    render(l, data); lastLoaded = Date.now(); banner('');
+    render(l, data); lastLoaded = Date.now(); setUpdated(lastLoaded); banner('');
   } catch (e) {
     banner(c ? `Offline — showing data from ${ago(c.t)}.` : 'Could not load weather. Check your connection.');
   } finally { $('#refresh').classList.remove('spin'); }
