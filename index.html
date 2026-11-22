@@ -214,8 +214,8 @@ async function fetchWeather(l) {
 const cached = l => store.get(key(l), null);
 
 /* ---------- rendering ---------- */
-const hourLabel = s => new Date(s).toLocaleTimeString([], { hour: 'numeric' });
-const clock = s => new Date(s).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const hourLabel = s => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+const clock = s => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 const dayName = (s, i) => i === 0 ? 'Today' : new Date(+s.slice(0,4), +s.slice(5,7) - 1, +s.slice(8,10)).toLocaleDateString([], { weekday: 'short' });
 
 function render(l, data) {
