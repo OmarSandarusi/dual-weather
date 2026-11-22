@@ -86,9 +86,7 @@
   .day .name { font-weight:500; }
   .day .pp { font-size:.72rem; color:#9fd0ff; min-height:1em; }
   .day .ic { font-size:1.5rem; text-align:center; }
-  .day .temps { display:grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; text-align:right; font-variant-numeric: tabular-nums; }
-  .day .temps .c { color: var(--c); }
-  .day .temps .f { color: var(--f); }
+  .day .temps { display:flex; flex-direction:column; gap:2px; text-align:right; font-variant-numeric: tabular-nums; }
   .day .temps small { color: var(--muted); font-size:.72rem; margin-right:4px; }
   .legend { display:grid; grid-template-columns: 96px 1fr 1fr; gap:6px; font-size:.72rem; color:var(--muted); padding-bottom:4px; text-align:right; }
   .legend span:nth-child(2) { color:var(--c); } .legend span:nth-child(3) { color:var(--f); }
@@ -249,10 +247,8 @@ function render(l, data) {
       <div><div class="name">${dayName(t, i)}</div><div class="pp">${pp >= 10 ? '💧' + pp + '%' : ''}</div></div>
       <div class="ic">${em}</div>
       <div class="temps">
-        <div class="c"><small>H</small>${r(d.temperature_2m_max[i])}°C</div>
-        <div class="f"><small>H</small>${r(toF(d.temperature_2m_max[i]))}°F</div>
-        <div class="c"><small>L</small>${r(d.temperature_2m_min[i])}°C</div>
-        <div class="f"><small>L</small>${r(toF(d.temperature_2m_min[i]))}°F</div>
+        <div><small>H</small>${dual(d.temperature_2m_max[i])}</div>
+        <div><small>L</small>${dual(d.temperature_2m_min[i])}</div>
       </div></div>`;
   }).join('');
 
