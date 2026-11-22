@@ -52,6 +52,7 @@
   /* hero */
   .hero { text-align:center; padding: 18px 0 8px; }
   .hero .emoji { font-size: 4.2rem; line-height:1; }
+  .hero .selday { font-size:.95rem; color:var(--muted); margin-top:8px; }
   .hero .cond { font-size:1.15rem; margin-top:6px; color: var(--muted); }
   .big { display:flex; justify-content:center; align-items:baseline; gap: 18px; margin-top: 10px; }
   .big .t { display:flex; align-items:flex-start; line-height:.95; }
@@ -79,10 +80,18 @@
   .hour .tc { font-size:1.05rem; font-weight:600; color:var(--c); }
   .hour .tf { font-size:.95rem; color:var(--f); }
   .hour .pp { font-size:.75rem; color:#9fd0ff; margin-top:4px; min-height:1em; }
+  .hour .pp.lo { opacity:.5; }
+  .hour .amt { display:flex; flex-direction:column; font-size:.72rem; min-height:2.3em; margin-top:2px; }
+  .hour .amt .c { color:var(--c); } .hour .amt .f { color:var(--f); }
+  #hourlyCard { scroll-margin-top: 8px; }
 
   /* daily */
   .day { display:grid; grid-template-columns: 56px 34px 1fr; align-items:center; gap:6px; padding:10px 0; border-top:1px solid var(--line); }
   .day:first-of-type { border-top:0; }
+  .day { cursor:pointer; }
+  .day.sel { background:var(--card-strong); border-radius:16px; margin:0 -8px; padding:10px 8px; border-top-color:transparent; }
+  .day.sel + .day { border-top-color:transparent; }
+  .day:focus-visible { outline:2px solid #fff; outline-offset:2px; }
   .day .name { font-weight:500; }
   .day .pp { font-size:.72rem; color:#9fd0ff; min-height:1em; }
   .day .ic { font-size:1.5rem; text-align:center; }
@@ -94,6 +103,8 @@
   /* details */
   .grid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:14px; }
   .tile { background:var(--card); border-radius:var(--radius); padding:14px 16px; }
+  .tile.wide { grid-column: span 2; }
+  .tile .v .s { opacity:.4; }
   .tile h3 { margin:0 0 6px; font-size:.75rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
   .tile .v { font-size:1.25rem; line-height:1.35; }
   .tile .v div { display:flex; align-items:baseline; gap:6px; }
@@ -193,7 +204,7 @@ let locations = store.get('locations', []);
 let currentIdx = Math.min(store.get('currentIdx', 0), Math.max(0, locations.length - 1));
 let lastLoaded = 0;
 
-const key = l => `wx:${l.lat.toFixed(2)},${l.lon.toFixed(2)}`;
+const key = l => `wx2:${l.lat.toFixed(2)},${l.lon.toFixed(2)}`;
 
 /* ---------- data ---------- */
 async function fetchWeather(l) {
@@ -202,8 +213,8 @@ async function fetchWeather(l) {
     latitude: l.lat, longitude: l.lon, timezone: 'auto', forecast_days: 10,
     wind_speed_unit: 'kmh', temperature_unit: 'celsius',
     current: 'temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,weather_code,is_day,wind_speed_10m,wind_gusts_10m',
-    hourly: 'temperature_2m,precipitation_probability,weather_code,is_day',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset'
+    hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,is_day,relative_humidity_2m,dew_point_2m',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_gusts_10m_max,sunrise,sunset'
   });
   const res = await fetch(u);
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -218,32 +229,59 @@ const hourLabel = s => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric'
 const clock = s => new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 const dayName = (s, i) => i === 0 ? 'Today' : new Date(+s.slice(0,4), +s.slice(5,7) - 1, +s.slice(8,10)).toLocaleDateString([], { weekday: 'short' });
 
+let selDay = 0;          // which day of the 10-day list is selected (0 = today)
+let shown = null;        // { l, data } currently on screen, so a tap can re-render
+let shownKey = null;
+
+const avg = a => a.reduce((s, x) => s + x, 0) / a.length;
+const mm2in = v => (v / 25.4).toFixed(2);
+const speed = k => `<div><span class="c">${r(k)}</span><span class="u">km/h</span></div><div><span class="f">${r(toMph(k))}</span><span class="u">mph</span></div>`;
+const tile = (title, body, cls = '', style = '') => `<div class="tile ${cls}"><h3>${title}</h3><div class="v" ${style ? `style="${style}"` : ''}>${body}</div></div>`;
+
 function render(l, data) {
+  shown = { l, data };
   const c = data.current, h = data.hourly, d = data.daily;
-  const [label, emoji, sky] = describe(c.weather_code, c.is_day);
+  if (selDay >= d.time.length) selDay = 0;
+  const sel = selDay, today = sel === 0;
+
+  // ----- which hours to list -----
+  const idxs = [];
+  if (today) {                                   // next 24 hours from now
+    const nowHour = c.time.slice(0, 13);
+    let start = h.time.findIndex(t => t.slice(0, 13) >= nowHour);
+    if (start < 0) start = 0;
+    for (let i = start; i < Math.min(start + 24, h.time.length); i++) idxs.push(i);
+  } else {                                       // that calendar day, midnight to midnight
+    h.time.forEach((t, i) => { if (t.startsWith(d.time[sel])) idxs.push(i); });
+  }
+
+  // ----- hero (big panel) -----
+  const [label, emoji, sky] = today ? describe(c.weather_code, c.is_day) : describe(d.weather_code[sel], 1);
   document.body.dataset.sky = sky;
   document.querySelector('meta[name=theme-color]').content = getComputedStyle(document.body).getPropertyValue('--bg1').trim();
+  const bigC = today ? c.temperature_2m : d.temperature_2m_max[sel];
+  const y = +d.time[sel].slice(0, 4), mo = +d.time[sel].slice(5, 7) - 1, dd = +d.time[sel].slice(8, 10);
+  const dayTitle = new Date(y, mo, dd).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
-  // hours: start from current hour, 24 entries
-  const nowHour = c.time.slice(0, 13);
-  let start = h.time.findIndex(t => t.slice(0, 13) >= nowHour);
-  if (start < 0) start = 0;
-  const hours = [];
-  for (let i = start; i < Math.min(start + 24, h.time.length); i++) {
+  // ----- hourly -----
+  const hours = idxs.map((i, n) => {
     const [, em] = describe(h.weather_code[i], h.is_day[i]);
     const pp = h.precipitation_probability[i];
-    hours.push(`<div class="hour">
-      <div class="time">${i === start ? 'Now' : hourLabel(h.time[i])}</div>
+    const mm = h.precipitation[i] || 0;
+    return `<div class="hour">
+      <div class="time">${today && n === 0 ? 'Now' : hourLabel(h.time[i])}</div>
       <div class="ic">${em}</div>
       <div class="tc">${r(h.temperature_2m[i])}°C</div>
       <div class="tf">${r(toF(h.temperature_2m[i]))}°F</div>
-      <div class="pp">${pp >= 10 ? pp + '%' : ''}</div></div>`);
-  }
+      <div class="pp ${pp >= 10 ? '' : 'lo'}">${pp == null ? '' : '💧' + pp + '%'}</div>
+      <div class="amt">${mm >= 0.05 ? `<span class="c">${mm.toFixed(1)}mm</span><span class="f">${mm2in(mm)}in</span>` : ''}</div></div>`;
+  }).join('');
 
+  // ----- 10-day list -----
   const days = d.time.map((t, i) => {
     const [, em] = describe(d.weather_code[i], 1);
     const pp = d.precipitation_probability_max[i];
-    return `<div class="day">
+    return `<div class="day ${i === sel ? 'sel' : ''}" data-day="${i}" role="button" tabindex="0" aria-pressed="${i === sel}">
       <div><div class="name">${dayName(t, i)}</div><div class="pp">${pp >= 10 ? '💧' + pp + '%' : ''}</div></div>
       <div class="ic">${em}</div>
       <div class="temps">
@@ -252,38 +290,69 @@ function render(l, data) {
       </div></div>`;
   }).join('');
 
+  // ----- detail tiles -----
+  const chance = d.precipitation_probability_max[sel];
+  const total = d.precipitation_sum[sel] || 0;
+  const sun = tile('Sun', `🌅 ${clock(d.sunrise[sel])}<br>🌇 ${clock(d.sunset[sel])}`, '', 'font-size:1rem');
+  const precip = tile(today ? 'Precipitation today' : 'Precipitation',
+    `<div>${chance == null ? '—' : '💧 ' + chance + '% chance'}</div>
+     <div><span class="c">${total.toFixed(1)}</span><span class="u">mm</span><span class="s">/</span><span class="f">${mm2in(total)}</span><span class="u">in</span></div>`, 'wide');
+  let tiles;
+  if (today) {
+    tiles = [
+      tile('Feels like', dualStack(c.apparent_temperature)),
+      tile('Dew point', dualStack(c.dew_point_2m)),
+      tile('Wind', speed(c.wind_speed_10m)),
+      tile('Gusts', speed(c.wind_gusts_10m)),
+      tile('Humidity', r(c.relative_humidity_2m) + '%'),
+      sun, precip];
+  } else {
+    const dayIx = idxs;
+    tiles = [
+      tile('Feels like', `<div>H ${dual(d.apparent_temperature_max[sel])}</div><div>L ${dual(d.apparent_temperature_min[sel])}</div>`, '', 'font-size:1rem'),
+      tile('Dew point (avg)', dualStack(avg(dayIx.map(i => h.dew_point_2m[i])))),
+      tile('Wind (max)', speed(d.wind_speed_10m_max[sel])),
+      tile('Gusts (max)', speed(d.wind_gusts_10m_max[sel])),
+      tile('Humidity (avg)', r(avg(dayIx.map(i => h.relative_humidity_2m[i]))) + '%'),
+      sun, precip];
+  }
+
   $('#view').innerHTML = `
     <section class="hero">
       <div class="emoji">${emoji}</div>
+      ${today ? '' : `<div class="selday">${esc(dayTitle)} · High</div>`}
       <div class="big">
-        <div class="t c"><b>${r(c.temperature_2m)}</b><i>°C</i></div>
+        <div class="t c"><b>${r(bigC)}</b><i>°C</i></div>
         <div class="sep">/</div>
-        <div class="t f"><b>${r(toF(c.temperature_2m))}</b><i>°F</i></div>
+        <div class="t f"><b>${r(toF(bigC))}</b><i>°F</i></div>
       </div>
       <div class="cond">${esc(label)}</div>
       <div class="hilo">
-        <div>High ${dual(d.temperature_2m_max[0])}</div>
-        <div>Low ${dual(d.temperature_2m_min[0])}</div>
+        ${today ? `<div>High ${dual(d.temperature_2m_max[0])}</div>` : ''}
+        <div>Low ${dual(d.temperature_2m_min[sel])}</div>
       </div>
     </section>
 
-    <section class="card"><h2>Hourly</h2><div class="hours">${hours.join('')}</div></section>
+    <section class="card" id="hourlyCard"><h2>Hourly${today ? '' : ' · ' + dayName(d.time[sel], sel)}</h2><div class="hours">${hours}</div></section>
 
     <section class="card"><h2>10-day forecast</h2>${days}</section>
 
-    <div class="grid">
-      <div class="tile"><h3>Feels like</h3><div class="v">${dualStack(c.apparent_temperature)}</div></div>
-      <div class="tile"><h3>Dew point</h3><div class="v">${dualStack(c.dew_point_2m)}</div></div>
-      <div class="tile"><h3>Wind</h3><div class="v">
-        <div><span class="c">${r(c.wind_speed_10m)}</span><span class="u">km/h</span></div>
-        <div><span class="f">${r(toMph(c.wind_speed_10m))}</span><span class="u">mph</span></div></div></div>
-      <div class="tile"><h3>Gusts</h3><div class="v">
-        <div><span class="c">${r(c.wind_gusts_10m)}</span><span class="u">km/h</span></div>
-        <div><span class="f">${r(toMph(c.wind_gusts_10m))}</span><span class="u">mph</span></div></div></div>
-      <div class="tile"><h3>Humidity</h3><div class="v">${r(c.relative_humidity_2m)}%</div></div>
-      <div class="tile"><h3>Sun</h3><div class="v" style="font-size:1rem">🌅 ${clock(d.sunrise[0])}<br>🌇 ${clock(d.sunset[0])}</div></div>
-    </div>`;
+    <div class="grid">${tiles.join('')}</div>`;
 }
+
+// tap (or Enter/Space) on a day to make it the selected day
+function pickDay(el) {
+  const row = el.closest('[data-day]');
+  if (!row || !shown) return;
+  selDay = +row.dataset.day;
+  render(shown.l, shown.data);
+  const card = $('#hourlyCard');   // if the hourly strip was scrolled out of view, bring it back
+  if (card && card.getBoundingClientRect().top < 0) card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+$('#view').addEventListener('click', e => pickDay(e.target));
+$('#view').addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-day]')) { e.preventDefault(); pickDay(e.target); }
+});
 
 function showWelcome() {
   $('#place').textContent = 'Dual Weather';
@@ -303,6 +372,7 @@ async function show(forceNetwork = true) {
   const l = locations[currentIdx];
   if (!l) return showWelcome();
   $('#place').textContent = l.name;
+  if (key(l) !== shownKey) { selDay = 0; shownKey = key(l); }
   const c = cached(l);
   if (c) render(l, c.data);
   if (!forceNetwork && c && Date.now() - c.t < 10 * 60 * 1000) { banner(''); return; }
